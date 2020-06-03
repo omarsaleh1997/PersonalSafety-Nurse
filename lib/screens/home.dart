@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:barcode_scan/barcode_scan.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -923,7 +924,13 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                         ),
                       ),
                       GestureDetector(
-                          onTap: () {},
+                          onTap: ()async {
+                            var result =await BarcodeScanner.scan();
+                            print(result.type); // The result type (barcode, cancelled, failed)
+                            print(result.rawContent); // The barcode content
+                            print(result.format); // The barcode format (as enum)
+                            print(result.formatNote);
+                          },
                           child: Image.asset(
                             'assets/images/camera.png',
                             width: 50,
