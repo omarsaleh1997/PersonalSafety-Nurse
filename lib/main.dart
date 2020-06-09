@@ -19,8 +19,8 @@ Future<void> main() async {
   print(token);
   runApp(MaterialApp(
       debugShowCheckedModeBanner: false,
-      //home: token == null ? Logout() : Home()
-home: Home(),
+      home: token == null ? Logout() : Home()
+//home: Home(),
 
   ));
 }

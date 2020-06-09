@@ -8,86 +8,6 @@ import '../others/StaticVariables.dart';
 
 class SocketHandler {
 
-  static bool connectionIsOpen = false;
-  static HubConnection _hubConnection;
-
-  static bool connectionIsOpen2 = false;
-  static HubConnection _hubConnection2;
-
-  static Future<void> ConnectToClientChannel() async {
-
-    print("Trying to connect to rescuer channel..");
-
-    final httpOptions = new HttpConnectionOptions(
-        accessTokenFactory: () async => await getAccessToken());
-
-    if (_hubConnection == null) {
-      _hubConnection = HubConnectionBuilder()
-          .withUrl(StaticVariables.rescuerServerURL, options: httpOptions)
-          .build();
-      _hubConnection.onclose((error) => connectionIsOpen = false);
-      _hubConnection.on("ConnectionInfoChannel", SaveConnectionID_Rescuer);
-      _hubConnection.on("RescuerChannel", UpdateRescuerSOSState);
-    }
-
-    if (_hubConnection.state != HubConnectionState.Connected) {
-      if (_hubConnection.state != HubConnectionState.Disconnected)
-        await _hubConnection.stop();
-      await _hubConnection.start();
-      connectionIsOpen = true;
-      //StartSharingLocation("START_LOCATION_SHARING", 11, 15);
-    }
-  }
-
-  static Future<void> ConnectToLocationChannel() async {
-
-    print("Trying to connect to location channel..");
-
-    final httpOptions = new HttpConnectionOptions(
-        accessTokenFactory: () async => await getAccessToken());
-
-    if (_hubConnection2 == null) {
-      _hubConnection2 = HubConnectionBuilder()
-          .withUrl(StaticVariables.locationServerURL, options: httpOptions)
-          .build();
-      _hubConnection2.onclose((error) => connectionIsOpen2 = false);
-      _hubConnection2.on("LocationChannel", GiveLocConnectionFeedback);
-    }
-
-    if (_hubConnection2.state != HubConnectionState.Connected) {
-      if (_hubConnection2.state != HubConnectionState.Disconnected)
-        await _hubConnection2.stop();
-      await _hubConnection2.start();
-      connectionIsOpen2 = true;
-      print("Connected to location hub!");
-      //StartSharingLocation("START_LOCATION_SHARING", 11, 15);
-    }
-  }
-
-  static void GiveLocConnectionFeedback(List<Object> args)
-  {
-
-    print("Got feedback from location hub!");
-
-  }
-  
-  static void SendLocationToServer(double latitude, double longitude)
-  {
-
-    List<Object> argList = [latitude, longitude];
-    
-    _hubConnection2.send("LocationChannel", argList);
-    
-  }
-
-  //#region ClientSOSRequest
-
-  static void SaveConnectionID_Rescuer(List<Object> args) {
-    print("Connected to rescuer hub! connection ID is: " + args[0].toString());
-
-    StaticVariables.prefs.setString('connectionid_client', args[0].toString());
-
-  }
 
   static String token = "";
   static bool result = false;
@@ -96,31 +16,21 @@ class SocketHandler {
     'Authorization': 'Bearer $token'
   };
 
-  static void UpdateActiveSOSRequestDetails(int requestID)
-  {
-
-    //TODO: Make an API call to get that request's info, and fill fields with it.
-
-    GetSOSRequestDetails(requestID.toString());
-
-  }
-
-  static Future<APIResponse<dynamic>> GetSOSRequestDetails(String requestID) {
+  static Future<APIResponse<dynamic>> GetBasicInfo() {
     print('*****************');
     token = StaticVariables.prefs.getString('token');
-    print("Sending GetSOSRequestDetails with requuestID: " + requestID);
-    print("Token is: " + token);
+    print("Getting basic info..");
+    String url = StaticVariables.API + 'api/Account/Personnel/GetBasicInfo';
     return http
-        .get(StaticVariables.API + '/api/Rescuer/GetSOSRequestDetails' + '?requestId=' + requestID,
+        .get(url,
         headers: headers)
         .then((data) {
-      print('??????????????????????');
       if (data.statusCode == 200) {
         Map userMap = jsonDecode(data.body);
         var APIresult = APIResponse.fromJson(userMap);
         print(APIresult.status);
         print(APIresult.result);
-        GlobalVar.Set("requestresult", APIresult);
+        GlobalVar.Set("basicinfo", APIresult.result);
         //result = APIresult.result;
         print(APIresult.hasErrors);
         return APIresult;
@@ -135,49 +45,91 @@ class SocketHandler {
         hasErrors: true, messages: "An Error Has Occured"));
   }
 
-
-  static Future<APIResponse<dynamic>> SolveSOSRequest() async {
-    //String jsonRequest = await GetSOSRequestJson(requestType);
-    int requestID = GlobalVar.Get("activerequestid", -1);
-    print("Calling API SolveSOSRequest with requestID " + requestID.toString() + " ..");
-
+  static Future<APIResponse<dynamic>> GetClientDetails(String clientEmail) {
+    print('*****************');
     token = StaticVariables.prefs.getString('token');
+    print("Sending GetClientDetails with email: " + clientEmail.replaceAll("@", "%40"));
+    String url = StaticVariables.API + 'api/Nurse/GetClientDetails' + '?clientEmail=' + clientEmail;
     return http
-        .put(StaticVariables.API + '/api/Rescuer/SolveSOSRequest?requestID=$requestID',
+        .get(url,
         headers: headers)
         .then((data) {
       if (data.statusCode == 200) {
         Map userMap = jsonDecode(data.body);
         var APIresult = APIResponse.fromJson(userMap);
-        print(APIresult.toString());
-        print("Solve SOS SUCCESS");
-        GlobalVar.Set("activerequestid", -1);
+        print(APIresult.status);
         print(APIresult.result);
-//        var parsedJson = json.decode(APIresult.result);
-//        prefs.setString("activerequeststate", parsedJson['requestStateName']);
+        GlobalVar.Set("clientdetails", APIresult.result);
+        //result = APIresult.result;
+        print(APIresult.hasErrors);
         return APIresult;
       } else {
-        print("Solve SOS Failed");
-        print(headers);
-
+        print('============================');
         print(data.statusCode);
+        print("-----------------------------");
       }
-
       return APIResponse<dynamic>(
-          hasErrors: true,
-          messages:
-          "Please make sure that:\n \n \n- Email is not taken and is correct.\n- Password is Complex. \n- National ID is 14 digits. \n- Phone Number is 11 digits.");
+          hasErrors: true, messages: "An Error Has Occured");
     }).catchError((_) => APIResponse<dynamic>(
-        hasErrors: true,
-        messages:
-        "Please make sure that:\n \n \n- Email is not taken and is correct.\n- Password is Complex. \n- National ID is 14 digits. \n- Phone Number is 11 digits."));
+        hasErrors: true, messages: "An Error Has Occured"));
   }
 
-  static void UpdateRescuerSOSState(List<Object> args) {
-    print("Server requested updating server SOS State!");
-    print("Argument 0 is: " + args[0].toString());
-    GlobalVar.Set("activerequestid", args[0]);
-    UpdateActiveSOSRequestDetails(GlobalVar.Get("activerequestid", -1));
+  static Future<APIResponse<dynamic>> MarkClientAsPositive(String clientEmail) {
+    print('*****************');
+    token = StaticVariables.prefs.getString('token');
+    print("Sending MarkClientAsPositive with email: " + clientEmail.replaceAll("@", "%40"));
+    String url = StaticVariables.API + 'api/Nurse/MarkClientAsPositive' + '?clientEmail=' + clientEmail;
+    return http
+        .put(url,
+        headers: headers)
+        .then((data) {
+      if (data.statusCode == 200) {
+        Map userMap = jsonDecode(data.body);
+        var APIresult = APIResponse.fromJson(userMap);
+        print(APIresult.status);
+        print(APIresult.result);
+        //GlobalVar.Set("clientdetails", APIresult.result);
+        //result = APIresult.result;
+        print(APIresult.hasErrors);
+        return APIresult;
+      } else {
+        print('============================');
+        print(data.statusCode);
+        print("-----------------------------");
+      }
+      return APIResponse<dynamic>(
+          hasErrors: true, messages: "An Error Has Occured");
+    }).catchError((_) => APIResponse<dynamic>(
+        hasErrors: true, messages: "An Error Has Occured"));
+  }
+
+  static Future<APIResponse<dynamic>> MarkClientAsNegative(String clientEmail) {
+    print('*****************');
+    token = StaticVariables.prefs.getString('token');
+    print("Sending MarkClientAsNegative with email: " + clientEmail.replaceAll("@", "%40"));
+    String url = StaticVariables.API + 'api/Nurse/MarkClientAsNegative' + '?clientEmail=' + clientEmail;
+    return http
+        .put(url,
+        headers: headers)
+        .then((data) {
+      if (data.statusCode == 200) {
+        Map userMap = jsonDecode(data.body);
+        var APIresult = APIResponse.fromJson(userMap);
+        print(APIresult.status);
+        print(APIresult.result);
+        //GlobalVar.Set("clientdetails", APIresult.result);
+        //result = APIresult.result;
+        print(APIresult.hasErrors);
+        return APIresult;
+      } else {
+        print('============================');
+        print(data.statusCode);
+        print("-----------------------------");
+      }
+      return APIResponse<dynamic>(
+          hasErrors: true, messages: "An Error Has Occured");
+    }).catchError((_) => APIResponse<dynamic>(
+        hasErrors: true, messages: "An Error Has Occured"));
   }
 
   //#endregion

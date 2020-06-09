@@ -42,10 +42,14 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
 
   LatLng _center = const LatLng(45.521563, -122.677433);
 
+  bool scanned = false;
+
+  String fullName;
+
   @override
   void initState() {
     super.initState();
-
+    FillNurseName();
     //_invokeServiceInAndroid();
 
     //_stopServiceInAndroid();
@@ -54,9 +58,6 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     //_isServiceBound();
     _invokeServiceInAndroid();
 
-    SocketHandler.ConnectToClientChannel();
-    SocketHandler.ConnectToLocationChannel();
-
     Timer timer;
 
     timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -64,6 +65,21 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
         timer.cancel();
       }
       DoSearchAnimation();
+    });
+
+    setState(() {
+
+      fullName = StaticVariables.prefs.getString("fullname");
+
+    });
+
+  }
+
+  void FillNurseName () async
+  {
+    await SocketHandler.GetBasicInfo();
+    setState(() {
+      fullName = GlobalVar.Get("basicinfo", new Map<String, dynamic>())["fullName"]; //TODO: Modify " fullName " to whatever the API returns
     });
   }
 
@@ -177,7 +193,6 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
         debugPrint("Wrapper here --> $latLng");
 
         print("Called SendLocationToServer from native Android code.");
-        SocketHandler.SendLocationToServer(latLng.latitude, latLng.longitude);
         break;
     }
   }
@@ -204,6 +219,25 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   int clientAge = 51;
 
   Timer periodicalTimer;
+
+  void FillClientInfo()
+  {
+
+    Map<String, dynamic> clientDetails = GlobalVar.Get("clientdetails", new Map<String, dynamic>());
+    GlobalVar.Set("activeclientemail", clientDetails['userEmail']);
+    setState(() {
+
+      clientName = clientDetails["userFullName"];
+      clientEmail = clientDetails["userEmail"];
+      clientPhoneNumber = clientDetails["userPhoneNumber"];
+      clientBloodType = clientDetails["userBloodTypeName"];
+      clientMedicalHistory = clientDetails["userMedicalHistoryNotes"];
+      clientHomeAddress = clientDetails["userSavedAddress"];
+      clientAge = clientDetails["userAge"];
+
+    });
+
+  }
 
   void PeriodicallyUpdateInfo() {
     periodicalTimer =
@@ -267,287 +301,329 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   }
 
   Widget _requestView() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 250),
-      child: Container(
-        height: displayHeight(context) * .68,
-        width: displayWidth(context) * .9,
-        decoration: BoxDecoration(
-          color: Color(0xff3d4256),
-          borderRadius: BorderRadius.all(Radius.circular(20)),
-        ),
-        child: Stack(
-          children: <Widget>[
-            Container(
-              height: displayHeight(context) * .02,
-              width: displayWidth(context) * .9,
-              decoration: BoxDecoration(
-                color: Color(0xffF18C08),
-                borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20)),
-              ),
-              child: Stack(
-                children: <Widget>[],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 35, left: 30),
-              child: Text(
-                "Current Mission",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w400,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            Padding(
-                padding: const EdgeInsets.only(top: 100, left: 25),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(50.0),
-                  child: Image(
-                    width: 50,
-                    image: AssetImage('assets/images/ww.png'),
-                  ),
-                )),
-            Padding(
-              padding: const EdgeInsets.only(top: 105, left: 90),
-              child: Text(clientName,
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.white)),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 128, left: 90),
-              child: Text(clientEmail,
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w300,
-                      color: Color(0xffb7b7b7))),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 105, left: 250),
-              child: Container(
-                height: displayHeight(context) * .04,
-                width: displayWidth(context) * .2,
+    return Visibility(
+      visible: scanned,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 150),
+        child: Container(
+          height: displayHeight(context) * .68,
+          width: displayWidth(context) * .9,
+          decoration: BoxDecoration(
+            color: Color(0xff3d4256),
+            borderRadius: BorderRadius.all(Radius.circular(20)),
+          ),
+          child: Stack(
+            children: <Widget>[
+              Container(
+                height: displayHeight(context) * .02,
+                width: displayWidth(context) * .9,
                 decoration: BoxDecoration(
-                  color: Color(0xff3d4256),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0xff6b7499),
-                      blurRadius: 0.5, // has the effect of softening the shadow
-                      spreadRadius:
-                          0.5, // has the effect of extending the shadow
-                      offset: Offset(
-                        0, // horizontal, move right 10
-                        0, // vertical, move down 10
-                      ),
-                    )
-                  ],
-                ),
-                child: Stack(
-                  children: <Widget>[
-                    Center(
-                      child: Text(clientAge.toString() + " Years",
-                          style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w300,
-                              color: Colors.white)),
-                    )
-                  ],
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 175, left: 50, right: 50),
-              child: Container(
-                height: displayHeight(context) * .004,
-                width: displayWidth(context) * .8,
-                decoration: BoxDecoration(
-                  color: Color(0xff3d4256),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0xff303444),
-                      blurRadius: 0.5, // has the effect of softening the shadow
-                      spreadRadius:
-                          0.5, // has the effect of extending the shadow
-                      offset: Offset(
-                        0.5, // horizontal, move right 10
-                        0.5, // vertical, move down 10
-                      ),
-                    )
-                  ],
+                  color: Color(0xffF18C08),
+                  borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20)),
                 ),
                 child: Stack(
                   children: <Widget>[],
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 205, left: 30),
-              child: Text("Phone Number",
+              Padding(
+                padding: const EdgeInsets.only(top: 35, left: 30),
+                child: Text(
+                  "Current Patient",
                   style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.white)),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 230, left: 30),
-              child: Text(clientPhoneNumber,
-                  style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                      color: Color(0xff9da0ad))),
-            ),
-            Padding(
-                padding: const EdgeInsets.only(top: 200, left: 280),
-                child: ClipRRect(
-                    borderRadius: BorderRadius.circular(15.0),
-                    child: Container(
-                      height: 50,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              Padding(
+                  padding: const EdgeInsets.only(top: 100, left: 25),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(50.0),
+                    child: Image(
                       width: 50,
-                      decoration: BoxDecoration(
+                      image: AssetImage('assets/images/ww.png'),
+                    ),
+                  )),
+              Padding(
+                padding: const EdgeInsets.only(top: 105, left: 90),
+                child: Text(clientName,
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.white)),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 128, left: 90),
+                child: Text(clientEmail,
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w300,
+                        color: Color(0xffb7b7b7))),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 105, left: 250),
+                child: Container(
+                  height: displayHeight(context) * .04,
+                  width: displayWidth(context) * .2,
+                  decoration: BoxDecoration(
+                    color: Color(0xff3d4256),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0xff6b7499),
+                        blurRadius: 0.5, // has the effect of softening the shadow
+                        spreadRadius:
+                            0.5, // has the effect of extending the shadow
+                        offset: Offset(
+                          0, // horizontal, move right 10
+                          0, // vertical, move down 10
+                        ),
+                      )
+                    ],
+                  ),
+                  child: Stack(
+                    children: <Widget>[
+                      Center(
+                        child: Text(clientAge.toString() + " Years",
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w300,
+                                color: Colors.white)),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 175, left: 50, right: 50),
+                child: Container(
+                  height: displayHeight(context) * .004,
+                  width: displayWidth(context) * .8,
+                  decoration: BoxDecoration(
+                    color: Color(0xff3d4256),
+                    boxShadow: [
+                      BoxShadow(
                         color: Color(0xff303444),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black,
-                            blurRadius:
-                                0.5, // has the effect of softening the shadow
-                            spreadRadius:
-                                0.5, // has the effect of extending the shadow
-                            offset: Offset(
-                              0.5, // horizontal, move right 10
-                              0.5, // vertical, move down 10
-                            ),
-                          )
-                        ],
-                      ),
-                      child: Stack(
-                        children: <Widget>[
-                          Center(
-                            child: Image(
-                              width: 20,
-                              image: AssetImage('assets/images/whitephone.png'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ))),
-            Padding(
-              padding: const EdgeInsets.only(top: 270, left: 30),
-              child: Text("Blood Type",
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.white)),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 295, left: 30),
-              child: Text(clientBloodType,
-                  style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                      color: Color(0xff9da0ad))),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 335, left: 30),
-              child: Text("Medical History",
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.white)),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 360, left: 30),
-              child: Text(clientMedicalHistory,
-                  style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                      color: Color(0xff9da0ad))),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 400, left: 30),
-              child: Text("Home Address",
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.white)),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 425, left: 30, right: 100),
-              child: Text(clientHomeAddress,
-                  style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                      color: Color(0xff9da0ad))),
-            ),
-            Padding(
-                padding: const EdgeInsets.only(top: 400, left: 280),
-                child: ClipRRect(
-                    borderRadius: BorderRadius.circular(15.0),
-                    child: Container(
-                      height: 50,
-                      width: 50,
-                      decoration: BoxDecoration(
-                        color: Color(0xff303444),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black,
-                            blurRadius:
-                                0.5, // has the effect of softening the shadow
-                            spreadRadius:
-                                0.5, // has the effect of extending the shadow
-                            offset: Offset(
-                              0.5, // horizontal, move right 10
-                              0.5, // vertical, move down 10
-                            ),
-                          )
-                        ],
-                      ),
-                      child: Stack(
-                        children: <Widget>[
-                          Center(
-                            child: Image(
-                              width: 15,
-                              image:
-                                  AssetImage('assets/images/locationwhite.png'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ))),
-            Padding(
-              padding: const EdgeInsets.only(top: 500),
-              child: Center(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(15),
-                  child: Container(
-                    height: 50,
-                    width: 310,
-                    child: Center(
-                      child: ButtonTheme(
+                        blurRadius: 0.5, // has the effect of softening the shadow
+                        spreadRadius:
+                            0.5, // has the effect of extending the shadow
+                        offset: Offset(
+                          0.5, // horizontal, move right 10
+                          0.5, // vertical, move down 10
+                        ),
+                      )
+                    ],
+                  ),
+                  child: Stack(
+                    children: <Widget>[],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 205, left: 30),
+                child: Text("Phone Number",
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.white)),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 230, left: 30),
+                child: Text(clientPhoneNumber,
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xff9da0ad))),
+              ),
+              Padding(
+                  padding: const EdgeInsets.only(top: 200, left: 280),
+                  child: ClipRRect(
+                      borderRadius: BorderRadius.circular(15.0),
+                      child: Container(
                         height: 50,
-                        minWidth: 300,
-                        child: RaisedButton(
-                          child: Text("ARRIVED",
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w400,
-                                  color: Colors.white)),
-                          color: Color(0xff494f68),
+                        width: 50,
+                        decoration: BoxDecoration(
+                          color: Color(0xff303444),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black,
+                              blurRadius:
+                                  0.5, // has the effect of softening the shadow
+                              spreadRadius:
+                                  0.5, // has the effect of extending the shadow
+                              offset: Offset(
+                                0.5, // horizontal, move right 10
+                                0.5, // vertical, move down 10
+                              ),
+                            )
+                          ],
+                        ),
+                        child: Stack(
+                          children: <Widget>[
+                            Center(
+                              child: Image(
+                                width: 20,
+                                image: AssetImage('assets/images/whitephone.png'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ))),
+              Padding(
+                padding: const EdgeInsets.only(top: 270, left: 30),
+                child: Text("Blood Type",
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.white)),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 295, left: 30),
+                child: Text(clientBloodType,
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xff9da0ad))),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 335, left: 30),
+                child: Text("Medical History",
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.white)),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 360, left: 30),
+                child: Text(clientMedicalHistory,
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xff9da0ad))),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 400, left: 30),
+                child: Text("Home Address",
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.white)),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 425, left: 30, right: 100),
+                child: Text(clientHomeAddress,
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xff9da0ad))),
+              ),
+              Padding(
+                  padding: const EdgeInsets.only(top: 400, left: 280),
+                  child: ClipRRect(
+                      borderRadius: BorderRadius.circular(15.0),
+                      child: Container(
+                        height: 50,
+                        width: 50,
+                        decoration: BoxDecoration(
+                          color: Color(0xff303444),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black,
+                              blurRadius:
+                                  0.5, // has the effect of softening the shadow
+                              spreadRadius:
+                                  0.5, // has the effect of extending the shadow
+                              offset: Offset(
+                                0.5, // horizontal, move right 10
+                                0.5, // vertical, move down 10
+                              ),
+                            )
+                          ],
+                        ),
+                        child: Stack(
+                          children: <Widget>[
+                            Center(
+                              child: Image(
+                                width: 15,
+                                image:
+                                    AssetImage('assets/images/locationwhite.png'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ))),
+              Padding(
+                padding: const EdgeInsets.only(top: 475, right: 150),
+                child: Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(15),
+                    child: Container(
+                      height: 75,
+                      width: 140,
+                      child: Center(
+                        child: ButtonTheme(
+                          height: 100,
+                          minWidth: 140,
+                          child: RaisedButton(
+                            child: Text("MARK AS POSITIVE",
+                                style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w400,
+                                    color: Colors.white),
+                            textAlign: TextAlign.center,),
+
+                            color: Colors.redAccent,
 //                          disabledColor: Color(0x777fa3),
-                          onPressed: SocketHandler.SolveSOSRequest,
-                          elevation: 0,
+                            onPressed: () async {
+                              await SocketHandler.MarkClientAsPositive(GlobalVar.Get("activeclientemail", "") );
+                              scanned = false;
+                              },
+                            elevation: 0,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.only(top: 475, left: 150),
+                child: Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(15),
+                    child: Container(
+                      height: 75,
+                      width: 140,
+                      child: Center(
+                        child: ButtonTheme(
+                          height: 100,
+                          minWidth: 140,
+                          child: RaisedButton(
+                            child: Text("MARK AS NEGATIVE",
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w400,
+                                  color: Colors.white),
+                              textAlign: TextAlign.center,),
+
+                            color: Colors.lightGreen,
+//                          disabledColor: Color(0x777fa3),
+                            onPressed: () async {
+                              await SocketHandler.MarkClientAsNegative(GlobalVar.Get("activeclientemail", "") );
+                              scanned = false;
+                            },
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -566,7 +642,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
           Padding(
               padding: const EdgeInsets.only(top: 20.0, left: 15),
               child: Text(
-                "Agent Jesse Pinkman",
+                "Agent " + fullName,
                 style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
@@ -586,7 +662,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
             child: Container(
                 height: 50,
                 width: 50,
-                child: SvgPicture.asset("assets/images/badge.svg")),
+                child: SvgPicture.asset("assets/images/ambulance.svg")),
           )
         ],
       ),
@@ -621,7 +697,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
               child: Container(
                   height: 50,
                   width: 50,
-                  child: SvgPicture.asset("assets/images/badge.svg")),
+                  child: SvgPicture.asset("assets/images/ambulance.svg")),
             ),
             Padding(
                 padding: const EdgeInsets.only(top: 15.0, left: 70),
@@ -858,7 +934,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
           body: Stack(children: <Widget>[
             _title(),
             Padding(
-              padding: const EdgeInsets.only(top: 100, left: 20, right: 20),
+              padding: const EdgeInsets.only(top: 75, left: 20, right: 20),
               child: _rescuerData(),
             ),
 //              Center(
@@ -879,10 +955,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
 //                ),
 //              ),
             Center(
-              child: Visibility(
-                visible: !RequestsAreEmpty(),
-                child: _requestView(),
-              ),
+              child: _requestView(),
             ),
 //              Padding(
 //                padding: const EdgeInsets.only(top: 600),
@@ -896,50 +969,65 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
 //                  ),
 //              ),
 
-            Padding(
-              padding: const EdgeInsets.only(top: 650, right: 10.0, left: 10),
-              child: Container(
-                alignment: Alignment.bottomCenter,
-                decoration: BoxDecoration(
-                    color: primaryColor,
-                    borderRadius: BorderRadius.all(Radius.circular(10))),
-                height: 100,
-                child: Column(children: <Widget>[
-                  Container(
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: Color(0xff16B68F),
-                        borderRadius: BorderRadius.only(
-                            topRight: Radius.circular(10),
-                            topLeft: Radius.circular(10)),
-                      )),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: <Widget>[
-                      Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Text(
-                          'Mark Patient as Positive',
-                          style: TextStyle(color: Colors.white, fontSize: 20),
+            Visibility(
+              visible: !scanned,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 650, right: 10.0, left: 10),
+                child: Container(
+                  alignment: Alignment.bottomCenter,
+                  decoration: BoxDecoration(
+                      color: primaryColor,
+                      borderRadius: BorderRadius.all(Radius.circular(10))),
+                  height: 100,
+                  child: Column(children: <Widget>[
+                    Container(
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: Color(0xff16B68F),
+                          borderRadius: BorderRadius.only(
+                              topRight: Radius.circular(10),
+                              topLeft: Radius.circular(10)),
+                        )),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: <Widget>[
+                        Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Text(
+                            'Mark Patient as Positive',
+                            style: TextStyle(color: Colors.white, fontSize: 20),
+                          ),
                         ),
-                      ),
-                      GestureDetector(
-                          onTap: ()async {
-                            var result =await BarcodeScanner.scan();
-                            print(result.type); // The result type (barcode, cancelled, failed)
-                            print(result.rawContent); // The barcode content
-                            print(result.format); // The barcode format (as enum)
-                            print(result.formatNote);
-                          },
-                          child: Image.asset(
-                            'assets/images/camera.png',
-                            width: 50,
-                            height: 50,
-                            color: Color(0xff16B68F),
-                          ))
-                    ],
-                  ),
-                ]),
+                        GestureDetector(
+                            onTap: () async {
+                              scanned = false;
+                              var result = await BarcodeScanner.scan();
+
+                              GlobalVar.Set("clientdetails", null);
+                              await SocketHandler.GetClientDetails(result.rawContent);
+                              try{
+                                FillClientInfo();
+                                scanned = true;
+                              }
+                              catch(e)
+                              {
+                                print("Couldn't process QR result or server result. " + e.toString());
+                              }
+//                              print(result.type); // The result type (barcode, cancelled, failed)
+//                              print(result.rawContent); // The barcode content
+//                              print(result.format); // The barcode format (as enum)
+//                              print(result.formatNote);
+                            },
+                            child: Image.asset(
+                              'assets/images/camera.png',
+                              width: 50,
+                              height: 50,
+                              color: Color(0xff16B68F),
+                            ))
+                      ],
+                    ),
+                  ]),
+                ),
               ),
             ),
           ]),
