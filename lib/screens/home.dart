@@ -344,7 +344,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                     borderRadius: BorderRadius.circular(50.0),
                     child: Image(
                       width: 50,
-                      image: AssetImage('assets/images/ww.png'),
+                      image: AssetImage('assets/images/ProfilePic.png'),
                     ),
                   )),
               Padding(
@@ -642,7 +642,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
           Padding(
               padding: const EdgeInsets.only(top: 20.0, left: 15),
               child: Text(
-                "Agent " + fullName,
+                fullName,
                 style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
